@@ -3,7 +3,7 @@ using System.Data.SqlClient;
 
 namespace TCRM_1
 {
-    public partial class TCRMLogin : Form 
+    public partial class TCRMLogin : Form
     {
         public TCRMLogin()
         {
@@ -132,6 +132,12 @@ namespace TCRM_1
         {
             this.Hide();
             new TCRMReg().Show();
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            this.Hide();
+            new ForgotPass().Show();
         }
     }
 }

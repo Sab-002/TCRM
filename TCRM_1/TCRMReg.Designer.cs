@@ -233,9 +233,9 @@
             // 
             // button2
             // 
-            button2.Location = new Point(269, 12);
+            button2.Location = new Point(267, 12);
             button2.Name = "button2";
-            button2.Size = new Size(31, 26);
+            button2.Size = new Size(34, 34);
             button2.TabIndex = 14;
             button2.Text = "X";
             button2.UseVisualStyleBackColor = true;

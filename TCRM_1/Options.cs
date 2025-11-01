@@ -49,7 +49,7 @@ namespace TCRM_1
             btnLogout.ForeColor = Color.White;
             btnLogout.FlatStyle = FlatStyle.Flat;
             btnLogout.FlatAppearance.BorderSize = 0;
-            btnLogout.FlatAppearance.MouseOverBackColor = Color.FromArgb( 200, 35, 51); // Darker on hover
+            btnLogout.FlatAppearance.MouseOverBackColor = Color.FromArgb(200, 35, 51); // Darker on hover
             btnLogout.Font = new Font("Segoe UI", 9, FontStyle.Bold);
 
             btnLogout.Click += BtnLogout_Click;
@@ -78,9 +78,12 @@ namespace TCRM_1
         private void BtnLogs_Click(object sender, EventArgs e)
         {
             LogsForm logsForm = new LogsForm();
-            logsForm.ShowDialog(); 
+            logsForm.ShowDialog();
         }
-       
 
+        private void Options_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }

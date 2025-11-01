@@ -44,38 +44,45 @@
             // button3
             // 
             button3.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button3.Location = new Point(639, 12);
+            button3.BackColor = Color.FromArgb(147, 147, 255);
+            button3.FlatStyle = FlatStyle.Flat;
+            button3.Location = new Point(639, 15);
             button3.Name = "button3";
             button3.Size = new Size(46, 43);
             button3.TabIndex = 2;
             button3.Text = "+";
-            button3.UseVisualStyleBackColor = true;
+            button3.UseVisualStyleBackColor = false;
             button3.Click += button3_Click_1;
             // 
             // button2
             // 
             button2.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button2.Location = new Point(587, 12);
+            button2.BackColor = Color.FromArgb(147, 147, 255);
+            button2.FlatStyle = FlatStyle.Flat;
+            button2.Location = new Point(587, 15);
             button2.Name = "button2";
             button2.Size = new Size(46, 43);
             button2.TabIndex = 1;
             button2.Text = "±";
-            button2.UseVisualStyleBackColor = true;
+            button2.UseVisualStyleBackColor = false;
             button2.Click += button2_Click;
             // 
             // button4
             // 
-            button4.Location = new Point(12, 12);
+            button4.BackColor = Color.FromArgb(147, 147, 255);
+            button4.FlatStyle = FlatStyle.Flat;
+            button4.Location = new Point(12, 15);
             button4.Name = "button4";
             button4.Size = new Size(46, 43);
             button4.TabIndex = 3;
             button4.Text = "≡";
-            button4.UseVisualStyleBackColor = true;
+            button4.UseVisualStyleBackColor = false;
             button4.Click += button4_Click;
             // 
             // panel2
             // 
             panel2.AutoSize = true;
+            panel2.BackColor = Color.FromArgb(102, 102, 204);
             panel2.Controls.Add(label1);
             panel2.Controls.Add(button4);
             panel2.Controls.Add(button3);
@@ -83,17 +90,18 @@
             panel2.Dock = DockStyle.Top;
             panel2.Location = new Point(0, 0);
             panel2.Name = "panel2";
-            panel2.Size = new Size(697, 58);
+            panel2.Size = new Size(697, 61);
             panel2.TabIndex = 1;
             panel2.Paint += panel2_Paint;
             // 
             // label1
             // 
             label1.AutoSize = true;
-            label1.Font = new Font("Segoe UI", 14.25F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label1.Location = new Point(64, 18);
+            label1.Font = new Font("Segoe UI", 18F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label1.ForeColor = Color.White;
+            label1.Location = new Point(64, 15);
             label1.Name = "label1";
-            label1.Size = new Size(135, 25);
+            label1.Size = new Size(173, 32);
             label1.TabIndex = 4;
             label1.Text = "Welcome, ----";
             label1.Click += label1_Click;
@@ -101,8 +109,9 @@
             // flowLayoutPanel1
             // 
             flowLayoutPanel1.AutoScroll = true;
+            flowLayoutPanel1.BackColor = Color.GhostWhite;
             flowLayoutPanel1.Dock = DockStyle.Fill;
-            flowLayoutPanel1.Location = new Point(0, 58);
+            flowLayoutPanel1.Location = new Point(0, 61);
             flowLayoutPanel1.MinimumSize = new Size(697, 429);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
             flowLayoutPanel1.Size = new Size(697, 429);

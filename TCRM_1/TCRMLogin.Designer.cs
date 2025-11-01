@@ -33,7 +33,6 @@
             label1 = new Label();
             linkLabel1 = new LinkLabel();
             label2 = new Label();
-            pictureBox1 = new PictureBox();
             user = new TextBox();
             pass = new TextBox();
             panel1 = new Panel();
@@ -41,7 +40,7 @@
             label3 = new Label();
             linkLabel2 = new LinkLabel();
             button2 = new Button();
-            ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
+            label5 = new Label();
             SuspendLayout();
             // 
             // login
@@ -79,6 +78,7 @@
             linkLabel1.TabIndex = 2;
             linkLabel1.TabStop = true;
             linkLabel1.Text = "Forgot password";
+            linkLabel1.LinkClicked += linkLabel1_LinkClicked;
             // 
             // label2
             // 
@@ -89,16 +89,6 @@
             label2.Size = new Size(73, 20);
             label2.TabIndex = 3;
             label2.Text = "Password";
-            // 
-            // pictureBox1
-            // 
-            pictureBox1.BackgroundImage = (Image)resources.GetObject("pictureBox1.BackgroundImage");
-            pictureBox1.Location = new Point(73, 37);
-            pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(164, 71);
-            pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBox1.TabIndex = 4;
-            pictureBox1.TabStop = false;
             // 
             // user
             // 
@@ -164,20 +154,31 @@
             // 
             // button2
             // 
-            button2.Location = new Point(269, 12);
+            button2.Location = new Point(266, 12);
             button2.Name = "button2";
-            button2.Size = new Size(31, 26);
+            button2.Size = new Size(34, 34);
             button2.TabIndex = 11;
             button2.Text = "X";
             button2.UseVisualStyleBackColor = true;
             button2.Click += button2_Click;
             // 
-            // TCRM_1
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Font = new Font("Gadugi", 36F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label5.Location = new Point(76, 46);
+            label5.Name = "label5";
+            label5.Size = new Size(160, 57);
+            label5.TabIndex = 12;
+            label5.Text = "TCRM";
+            // 
+            // TCRMLogin
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ButtonFace;
             ClientSize = new Size(312, 431);
+            Controls.Add(label5);
             Controls.Add(button2);
             Controls.Add(linkLabel2);
             Controls.Add(label3);
@@ -185,18 +186,16 @@
             Controls.Add(panel1);
             Controls.Add(pass);
             Controls.Add(user);
-            Controls.Add(pictureBox1);
             Controls.Add(label2);
             Controls.Add(linkLabel1);
             Controls.Add(label1);
             Controls.Add(login);
             FormBorderStyle = FormBorderStyle.None;
             Icon = (Icon)resources.GetObject("$this.Icon");
-            Name = "TCRM_1";
+            Name = "TCRMLogin";
             StartPosition = FormStartPosition.CenterScreen;
             Text = " ";
             Load += Form1_Load;
-            ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -207,7 +206,6 @@
         private Label label1;
         private LinkLabel linkLabel1;
         private Label label2;
-        private PictureBox pictureBox1;
         private TextBox user;
         private TextBox pass;
         private Panel panel1;
@@ -215,5 +213,6 @@
         private Label label3;
         private LinkLabel linkLabel2;
         private Button button2;
+        private Label label5;
     }
 }

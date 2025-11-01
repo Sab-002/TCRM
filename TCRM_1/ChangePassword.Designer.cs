@@ -84,7 +84,7 @@
             // 
             // btnSavePassword
             // 
-            btnSavePassword.BackColor = Color.FromArgb(52, 152, 219);
+            btnSavePassword.BackColor = Color.FromArgb(128, 128, 255);
             btnSavePassword.FlatStyle = FlatStyle.Flat;
             btnSavePassword.ForeColor = Color.White;
             btnSavePassword.Location = new Point(180, 165);

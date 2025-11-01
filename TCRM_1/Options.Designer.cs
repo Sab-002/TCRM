@@ -37,6 +37,7 @@
             ClientSize = new Size(330, 439);
             Name = "Options";
             Text = "Options";
+            Load += Options_Load;
             ResumeLayout(false);
         }
 
