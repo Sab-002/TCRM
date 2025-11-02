@@ -17,8 +17,6 @@ namespace TCRM_1
         {
             InitializeComponent();
             label1.Text = "Welcome, " + user;
-            LoadWebNotes();
-            LoadNotes();
         }
         public void RefreshUsername()
         {
@@ -29,10 +27,18 @@ namespace TCRM_1
             // await webView21.EnsureCoreWebView2Async(null);
             // webView21.CoreWebView2.Navigate("https://www.youtube.com");
 
+            // clear buttons
+            //contentPanel.Controls.Clear();
+
+            // Create content panel here first
             contentPanel = new Panel();
             contentPanel.Dock = DockStyle.Fill;
-            contentPanel.Visible = false;  // hidden 
+            contentPanel.Visible = false;
             Controls.Add(contentPanel);
+
+            // Now safe to load notes after contentPanel exists
+            LoadNotes();
+            LoadWebNotes();
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
@@ -67,167 +73,37 @@ namespace TCRM_1
                 if (urlForm.ShowDialog(this) == DialogResult.OK)
                 {
                     string url = urlForm.EnteredUrl;
-                    string title = urlForm.EnteredTitle;
+                    string title = string.IsNullOrWhiteSpace(urlForm.EnteredTitle) ? "Web Note" : urlForm.EnteredTitle;
+
                     if (string.IsNullOrWhiteSpace(url))
                     {
                         MessageBox.Show("URL cannot be empty.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
-                    if (string.IsNullOrWhiteSpace(title))
-                    {
-                        title = "Web Note"; // Default if empty
-                    }
 
-                    // Insert into database
-                    int newId;
                     try
                     {
                         using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                         {
                             conn.Open();
-                            string query = "INSERT INTO webnote (AccId, Title, Link) VALUES (@AccId, @Title, @Link); SELECT SCOPE_IDENTITY();";
+                            string query = "INSERT INTO webnote (AccId, Title, Link) VALUES (@AccId, @Title, @Link);";
                             using (SqlCommand cmd = new SqlCommand(query, conn))
                             {
                                 cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
                                 cmd.Parameters.AddWithValue("@Title", title);
                                 cmd.Parameters.AddWithValue("@Link", url);
-                                newId = Convert.ToInt32(cmd.ExecuteScalar());
+                                cmd.ExecuteNonQuery();
                             }
                         }
-                        // Log successful addition
-                        AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Added new web note with title: {title}, URL: {url}");
+
+                        AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Added new web note: {title}");
+                        LoadNotes();
+                        LoadWebNotes();
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show("Failed to save to database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-
-                    string currentUrl = url;
-                    string currentTitle = title;
-
-                    Button newBtn = new Button
-                    {
-                        Text = currentTitle,
-                        Size = new Size(672, 59),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                        Tag = newId
-                    };
-
-                    // Left-click: open WebView (unchanged)
-                    newBtn.Click += async (s, ev) =>
-                    {
-                        if (string.IsNullOrWhiteSpace(currentUrl))
-                        {
-                            MessageBox.Show("No URL set for this button.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            return;
-                        }
-
-                        flowLayoutPanel1.Visible = false;
-                        panel2.Visible = false;
-                        contentPanel.Controls.Clear();
-                        contentPanel.Visible = true;
-
-                        // Top panel with back button
-                        Panel topPanel = new Panel
-                        {
-                            Dock = DockStyle.Top,
-                            Height = 50,
-                            BackColor = Color.Transparent
-                        };
-                        contentPanel.Controls.Add(topPanel);
-
-                        Button backBtn = new Button
-                        {
-                            Text = "← Back",
-                            Size = new Size(100, 30),
-                            Location = new Point(10, 10)
-                        };
-                        topPanel.Controls.Add(backBtn);
-
-                        // WebView2 fills remaining space
-                        var webView21 = new Microsoft.Web.WebView2.WinForms.WebView2
-                        {
-                            Dock = DockStyle.Fill
-                        };
-                        contentPanel.Controls.Add(webView21);
-                        topPanel.SendToBack();
-
-                        backBtn.Click += (s2, ev2) =>
-                        {
-                            try { webView21.Dispose(); } catch { }
-                            contentPanel.Visible = false;
-                            flowLayoutPanel1.Visible = true;
-                            panel2.Visible = true;
-                        };
-
-                        try
-                        {
-                            await webView21.EnsureCoreWebView2Async(null);
-                            webView21.CoreWebView2.Navigate(currentUrl);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("Failed to load URL:\n" + ex.Message, "Navigation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            contentPanel.Visible = false;
-                            flowLayoutPanel1.Visible = true;
-                            panel2.Visible = true;
-                        }
-
-                    };
-
-                    // Right-click: change URL and Title
-                    newBtn.MouseUp += (s, ev) =>
-                    {
-                        if (ev.Button == MouseButtons.Right)
-                        {
-                            using (var changeUrlForm = new UrlInputForm())
-                            {
-                                changeUrlForm.EnteredTitle = currentTitle; // Pre-set current title
-                                changeUrlForm.EnteredUrl = currentUrl; // Pre-set current URL
-                                if (changeUrlForm.ShowDialog(this) == DialogResult.OK)
-                                {
-                                    string newTitle = changeUrlForm.EnteredTitle;
-                                    string newUrl = changeUrlForm.EnteredUrl;
-                                    if (!string.IsNullOrWhiteSpace(newUrl))
-                                    {
-                                        if (string.IsNullOrWhiteSpace(newTitle))
-                                        {
-                                            newTitle = "Web Note"; // Default if empty
-                                        }
-                                        currentTitle = newTitle;
-                                        currentUrl = newUrl;
-                                        newBtn.Text = currentTitle; // Update button text
-                                                                    // Update DB
-                                        int id = (int)newBtn.Tag;
-                                        try
-                                        {
-                                            using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
-                                            {
-                                                conn.Open();
-                                                string query = "UPDATE webnote SET Title = @Title, Link = @Link WHERE Id = @Id";
-                                                using (SqlCommand cmd = new SqlCommand(query, conn))
-                                                {
-                                                    cmd.Parameters.AddWithValue("@Title", currentTitle);
-                                                    cmd.Parameters.AddWithValue("@Link", currentUrl);
-                                                    cmd.Parameters.AddWithValue("@Id", id);
-                                                    cmd.ExecuteNonQuery();
-                                                }
-                                            }
-                                            // Log successful update
-                                            AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Updated web note to title: {currentTitle}, URL: {currentUrl}");
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            MessageBox.Show("Failed to update database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    };
-
-                    flowLayoutPanel1.Controls.Add(newBtn);
+                        MessageBox.Show("Failed to save to database:\n" + ex.Message);
+                    } 
                 }
             }
         }
@@ -247,128 +123,220 @@ namespace TCRM_1
                         {
                             while (reader.Read())
                             {
-                                int id = reader.GetInt32(0);
-                                string title = reader.IsDBNull(1) ? "Web Note" : reader.GetString(1);
-                                string link = reader.GetString(2);
-
-                                string currentUrl = link;
-                                string currentTitle = title;
+                                int noteId = reader.GetInt32(0);
+                                string currentTitle = reader.IsDBNull(1) ? "Web Note" : reader.GetString(1);
+                                string currentUrl = reader.IsDBNull(2) ? "" : reader.GetString(2);
 
                                 Button newBtn = new Button
                                 {
                                     Text = currentTitle,
                                     Size = new Size(672, 59),
                                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                                    Tag = id
+                                    BackColor = Color.FromArgb(204, 229, 255),
+                                    Tag = noteId
                                 };
 
-                                // Left-click: open WebView
+                                // LEFT CLICK → open editable web note
                                 newBtn.Click += async (s, ev) =>
                                 {
-                                    if (string.IsNullOrWhiteSpace(currentUrl))
-                                    {
-                                        MessageBox.Show("No URL set for this button.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                        return;
-                                    }
-
                                     flowLayoutPanel1.Visible = false;
                                     panel2.Visible = false;
                                     contentPanel.Controls.Clear();
                                     contentPanel.Visible = true;
 
-                                    // Top panel with back button
+                                    // --- Header Panel ---
                                     Panel topPanel = new Panel
                                     {
                                         Dock = DockStyle.Top,
-                                        Height = 50,
-                                        BackColor = Color.Transparent
+                                        Height = 70,
+                                        BackColor = Color.FromArgb(102, 102, 204)
                                     };
                                     contentPanel.Controls.Add(topPanel);
 
+                                    // Back Button
                                     Button backBtn = new Button
                                     {
                                         Text = "← Back",
-                                        Size = new Size(100, 30),
-                                        Location = new Point(10, 10)
+                                        Size = new Size(80, 30),
+                                        Location = new Point(10, 20),
+                                        FlatStyle = FlatStyle.Flat
                                     };
                                     topPanel.Controls.Add(backBtn);
 
-                                    // WebView2 fills remaining space
-                                    var webView21 = new Microsoft.Web.WebView2.WinForms.WebView2
+                                    // Title TextBox
+                                    TextBox txtTitle = new TextBox
+                                    {
+                                        Text = currentTitle,
+                                        Font = new Font("Segoe UI", 10),
+                                        Width = 180,
+                                        Location = new Point(100, 22)
+                                    };
+                                    topPanel.Controls.Add(txtTitle);
+
+                                    // URL TextBox
+                                    TextBox txtUrl = new TextBox
+                                    {
+                                        Text = currentUrl,
+                                        Font = new Font("Segoe UI", 10),
+                                        Width = 300,
+                                        Location = new Point(290, 22)
+                                    };
+                                    topPanel.Controls.Add(txtUrl);
+
+                                    // --- WebView2 ---
+                                    var webView = new Microsoft.Web.WebView2.WinForms.WebView2
                                     {
                                         Dock = DockStyle.Fill
                                     };
-                                    contentPanel.Controls.Add(webView21);
+                                    contentPanel.Controls.Add(webView);
+                                    webView.BringToFront();
                                     topPanel.SendToBack();
-
-                                    backBtn.Click += (s2, ev2) =>
-                                    {
-                                        try { webView21.Dispose(); } catch { }
-                                        contentPanel.Visible = false;
-                                        flowLayoutPanel1.Visible = true;
-                                        panel2.Visible = true;
-                                    };
 
                                     try
                                     {
-                                        await webView21.EnsureCoreWebView2Async(null);
-                                        webView21.CoreWebView2.Navigate(currentUrl);
+                                        await webView.EnsureCoreWebView2Async(null);
+                                        webView.CoreWebView2.Navigate(currentUrl);
                                     }
                                     catch (Exception ex)
                                     {
-                                        MessageBox.Show("Failed to load URL:\n" + ex.Message, "Navigation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        MessageBox.Show("Failed to load URL:\n" + ex.Message);
+                                    }
+
+                                    // ENTER KEY → save and reload (same as back)
+                                    txtUrl.KeyDown += (s2, ev2) =>
+                                    {
+                                        if (ev2.KeyCode == Keys.Enter)
+                                        {
+                                            ev2.SuppressKeyPress = true; // prevent the beep
+
+                                            string newTitle = txtTitle.Text.Trim();
+                                            string newUrl = txtUrl.Text.Trim();
+
+                                            if (string.IsNullOrWhiteSpace(newUrl))
+                                            {
+                                                MessageBox.Show("URL cannot be empty.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                MessageBox.Show("The URL has been updated successfully!", "Web Note", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                                return;
+                                            }
+                                            try
+                                                {
+                                                    using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
+                                                    {
+                                                        updateConn.Open();
+                                                        string updateQuery = "UPDATE webnote SET Title=@Title, Link=@Link WHERE Id=@Id";
+                                                        using (SqlCommand cmd = new SqlCommand(updateQuery, updateConn))
+                                                        {
+                                                            cmd.Parameters.AddWithValue("@Title", string.IsNullOrWhiteSpace(newTitle) ? "Web Note" : newTitle);
+                                                            cmd.Parameters.AddWithValue("@Link", newUrl);
+                                                            cmd.Parameters.AddWithValue("@Id", noteId);
+                                                            cmd.ExecuteNonQuery();
+                                                        }
+                                                    }
+
+                                                    AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Updated WebNote: {newTitle}");
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    MessageBox.Show("Failed to update database:\n" + ex.Message);
+                                                }
+
+                                            try { webView.Dispose(); } catch { }
+
+                                            contentPanel.Visible = false;
+                                            flowLayoutPanel1.Visible = true;
+                                            panel2.Visible = true;
+
+                                            flowLayoutPanel1.Controls.Clear();
+                                            LoadNotes();
+                                            LoadWebNotes();
+                                        }
+                                    };
+
+                                    // BACK BUTTON → auto save and reload
+                                    backBtn.Click += (s2, ev2) =>
+                                    {
+                                        string newTitle = txtTitle.Text.Trim();
+                                        string newUrl = txtUrl.Text.Trim();
+
+                                        if (string.IsNullOrWhiteSpace(newUrl))
+                                        {
+                                            MessageBox.Show("URL cannot be empty.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                            return;
+                                        }
+
+                                        try
+                                        {
+                                            using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
+                                            {
+                                                updateConn.Open();
+                                                string updateQuery = "UPDATE webnote SET Title=@Title, Link=@Link WHERE Id=@Id";
+                                                using (SqlCommand cmd = new SqlCommand(updateQuery, updateConn))
+                                                {
+                                                    cmd.Parameters.AddWithValue("@Title", string.IsNullOrWhiteSpace(newTitle) ? "Web Note" : newTitle);
+                                                    cmd.Parameters.AddWithValue("@Link", newUrl);
+                                                    cmd.Parameters.AddWithValue("@Id", noteId);
+                                                    cmd.ExecuteNonQuery();
+                                                }
+                                            }
+
+                                            AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Updated WebNote: {newTitle}");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            MessageBox.Show("Failed to update database:\n" + ex.Message);
+                                        }
+
+                                        try { webView.Dispose(); } catch { }
+
                                         contentPanel.Visible = false;
                                         flowLayoutPanel1.Visible = true;
                                         panel2.Visible = true;
-                                    }
+
+                                        flowLayoutPanel1.Controls.Clear();
+                                        LoadNotes();
+                                        LoadWebNotes();
+                                    };
                                 };
 
-                                // Right-click: change Title and URL
+                                // RIGHT CLICK → delete
                                 newBtn.MouseUp += (s, ev) =>
                                 {
                                     if (ev.Button == MouseButtons.Right)
                                     {
-                                        using (var changeUrlForm = new UrlInputForm())
+                                        DialogResult confirm = MessageBox.Show(
+                                            "Delete this web note?",
+                                            "Confirm Delete",
+                                            MessageBoxButtons.YesNo,
+                                            MessageBoxIcon.Warning
+                                        );
+
+                                        if (confirm == DialogResult.Yes)
                                         {
-                                            changeUrlForm.EnteredTitle = currentTitle; // Pre-set current title
-                                            changeUrlForm.EnteredUrl = currentUrl; // Pre-set current URL
-                                            if (changeUrlForm.ShowDialog(this) == DialogResult.OK)
+                                            try
                                             {
-                                                string newTitle = changeUrlForm.EnteredTitle;
-                                                string newUrl = changeUrlForm.EnteredUrl;
-                                                if (!string.IsNullOrWhiteSpace(newUrl))
+                                                using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
                                                 {
-                                                    if (string.IsNullOrWhiteSpace(newTitle))
+                                                    delConn.Open();
+                                                    string deleteQuery = "DELETE FROM webnote WHERE Id=@Id";
+                                                    using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
                                                     {
-                                                        newTitle = "Web Note"; // Default if empty
-                                                    }
-                                                    currentTitle = newTitle;
-                                                    currentUrl = newUrl;
-                                                    newBtn.Text = currentTitle; // Update button text
-                                                                                // Update DB
-                                                    int btnId = (int)newBtn.Tag;
-                                                    try
-                                                    {
-                                                        using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
-                                                        {
-                                                            updateConn.Open();
-                                                            string updateQuery = "UPDATE webnote SET Title = @Title, Link = @Link WHERE Id = @Id";
-                                                            using (SqlCommand updateCmd = new SqlCommand(updateQuery, updateConn))
-                                                            {
-                                                                updateCmd.Parameters.AddWithValue("@Title", currentTitle);
-                                                                updateCmd.Parameters.AddWithValue("@Link", currentUrl);
-                                                                updateCmd.Parameters.AddWithValue("@Id", btnId);
-                                                                updateCmd.ExecuteNonQuery();
-                                                            }
-                                                        }
-                                                        // Log successful update
-                                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Updated web note to title: {currentTitle}, URL: {currentUrl}");
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        MessageBox.Show("Failed to update database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                                        delCmd.Parameters.AddWithValue("@Id", noteId);
+                                                        delCmd.ExecuteNonQuery();
                                                     }
                                                 }
+
+                                                AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Deleted WebNote: {currentTitle}");
+                                                flowLayoutPanel1.Controls.Clear();
+                                                LoadNotes();
+                                                LoadWebNotes();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                MessageBox.Show("Failed to delete web note:\n" + ex.Message);
                                             }
                                         }
                                     }
@@ -382,18 +350,15 @@ namespace TCRM_1
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Failed to load web notes:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Failed to load web notes:\n" + ex.Message);
             }
         }
 
-
         private void button3_Click_1(object sender, EventArgs e)
         {
-            // Directly create with defaults, no modal
-            string title = "Note"; // Default title
-            string note = ""; // Empty note
+            string title = "Note";
+            string note = "";
 
-            // Insert into database
             int newId;
             try
             {
@@ -409,7 +374,6 @@ namespace TCRM_1
                         newId = Convert.ToInt32(cmd.ExecuteScalar());
                     }
                 }
-                // Log successful addition
                 AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Added new note with title: {title}");
             }
             catch (Exception ex)
@@ -418,121 +382,17 @@ namespace TCRM_1
                 return;
             }
 
-            string currentTitle = title;
-            string currentNote = note;
-
-            Button newBtn = new Button
-            {
-                Text = currentTitle,
-                Size = new Size(672, 59),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Tag = newId // Store DB ID
-            };
-
-            newBtn.Click += (s, ev) =>
-            {
-                // Hide main panel
-                flowLayoutPanel1.Visible = false;
-                panel2.Visible = false;
-                contentPanel.Visible = true;
-                contentPanel.Controls.Clear();
-
-                // Title TextBox (changed from Label)
-                TextBox txtTitleBox = new TextBox
-                {
-                    Text = currentTitle,
-                    Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                    Location = new Point(10, 60),
-                    Width = contentPanel.Width - 20,
-                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-                };
-
-                // Big multiline TextBox for note
-                TextBox txtBox = new TextBox
-                {
-                    Text = currentNote,
-                    Multiline = true,
-                    Location = new Point(10, txtTitleBox.Bottom + 10),
-                    Size = new Size(contentPanel.Width - 20, contentPanel.Height - txtTitleBox.Bottom - 20),
-                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-                    ScrollBars = ScrollBars.Vertical,
-                    Font = new Font("Segoe UI", 16, FontStyle.Regular)
-                };
-
-                // Back button
-                Button backBtn = new Button
-                {
-                    Text = "← Back",
-                    Size = new Size(100, 40),
-                    Location = new Point(10, 10)
-                };
-                backBtn.Click += (s2, ev2) =>
-                {
-                    // Save changes on back
-                    string updatedTitle = txtTitleBox.Text.Trim();
-                    string updatedNote = txtBox.Text.Trim();
-                    if (string.IsNullOrWhiteSpace(updatedTitle))
-                    {
-                        updatedTitle = "Note";
-                    }
-                    currentTitle = updatedTitle;
-                    currentNote = updatedNote;
-                    newBtn.Text = currentTitle; // Update button text
-                                                // Update DB
-                    int btnId = (int)newBtn.Tag;
-                    try
-                    {
-                        using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
-                        {
-                            updateConn.Open();
-                            string updateQuery = "UPDATE Notes SET Title = @Title, Note = @Note, Modified = GETDATE() WHERE NoteId = @Id";
-                            using (SqlCommand updateCmd = new SqlCommand(updateQuery, updateConn))
-                            {
-                                updateCmd.Parameters.AddWithValue("@Title", currentTitle);
-                                updateCmd.Parameters.AddWithValue("@Note", currentNote);
-                                updateCmd.Parameters.AddWithValue("@Id", btnId);
-                                updateCmd.ExecuteNonQuery();
-                            }
-                        }
-                        // Log successful update
-                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Updated note to title: {currentTitle}");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Failed to update database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    // Go back to main view
-                    contentPanel.Visible = false;
-                    flowLayoutPanel1.Visible = true;
-                    panel2.Visible = true;
-                };
-
-                // Add controls
-                contentPanel.Controls.Add(backBtn);
-                contentPanel.Controls.Add(txtTitleBox);
-                contentPanel.Controls.Add(txtBox);
-            };
-
-            // Right-click: removed modal, now does nothing (or you can add other functionality if needed)
-            newBtn.MouseUp += (s, ev) =>
-            {
-                if (ev.Button == MouseButtons.Right)
-                {
-                    // No action, or add something else like delete, pin, etc.
-                }
-            };
-
-            // Add the button to the panel
-            flowLayoutPanel1.Controls.Add(newBtn);
-
-            // Immediately open the note editor (simulate click)
-            newBtn.PerformClick();
+            LoadNotes();
+            LoadWebNotes();
         }
+
 
         private void LoadNotes()
         {
             try
             {
+                flowLayoutPanel1.Controls.Clear(); // clear existing buttons before reloading
+
                 using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                 {
                     conn.Open();
@@ -546,7 +406,7 @@ namespace TCRM_1
                             {
                                 int id = reader.GetInt32(0);
                                 string title = reader.IsDBNull(1) ? "Note" : reader.GetString(1);
-                                string note = reader.GetString(2);
+                                string note = reader.IsDBNull(2) ? "" : reader.GetString(2);
 
                                 string currentTitle = title;
                                 string currentNote = note;
@@ -556,18 +416,37 @@ namespace TCRM_1
                                     Text = currentTitle,
                                     Size = new Size(672, 59),
                                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                                    BackColor = Color.FromArgb(255, 245, 204),
                                     Tag = id
                                 };
 
+                                // LEFT CLICK — open note editor
                                 newBtn.Click += (s, ev) =>
                                 {
-                                    // Hide main panel
                                     flowLayoutPanel1.Visible = false;
                                     panel2.Visible = false;
                                     contentPanel.Visible = true;
                                     contentPanel.Controls.Clear();
 
-                                    // Title TextBox
+                                    // Back button
+                                    Button backBtn = new Button
+                                    {
+                                        Text = "← Back",
+                                        Size = new Size(100, 40),
+                                        Location = new Point(10, 10)
+                                    };
+
+                                    // Live count label at top-right
+                                    Label lblCount = new Label
+                                    {
+                                        AutoSize = true,
+                                        Font = new Font("Segoe UI", 10, FontStyle.Italic),
+                                        ForeColor = Color.Gray,
+                                        TextAlign = ContentAlignment.MiddleRight,
+                                        Anchor = AnchorStyles.Top | AnchorStyles.Right
+                                    };
+
+                                    // Title box
                                     TextBox txtTitleBox = new TextBox
                                     {
                                         Text = currentTitle,
@@ -577,120 +456,110 @@ namespace TCRM_1
                                         Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
                                     };
 
-                                    // Big multiline TextBox for note
+                                    // Note box
                                     TextBox txtBox = new TextBox
                                     {
                                         Text = currentNote,
                                         Multiline = true,
+                                        ScrollBars = ScrollBars.Vertical,
+                                        Font = new Font("Segoe UI", 16),
                                         Location = new Point(10, txtTitleBox.Bottom + 10),
                                         Size = new Size(contentPanel.Width - 20, contentPanel.Height - txtTitleBox.Bottom - 20),
-                                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-                                        ScrollBars = ScrollBars.Vertical,
-                                        Font = new Font("Segoe UI", 16, FontStyle.Regular)
+                                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
                                     };
 
-                                    // Back button
-                                    Button backBtn = new Button
+                                    // Update count dynamically
+                                    txtBox.TextChanged += (s3, ev3) => { lblCount.Text = $"Letters: {txtBox.Text.Length}"; };
+                                    lblCount.Text = $"Letters: {txtBox.Text.Length}";
+
+                                    // Keep count label top-right on resize
+                                    contentPanel.Resize += (s2, ev2) =>
                                     {
-                                        Text = "← Back",
-                                        Size = new Size(100, 40),
-                                        Location = new Point(10, 10)
+                                        lblCount.Location = new Point(contentPanel.Width - 140, 20);
                                     };
+
+                                    // Save & return to main view
                                     backBtn.Click += (s2, ev2) =>
                                     {
-                                        // Save changes on back
                                         string updatedTitle = txtTitleBox.Text.Trim();
                                         string updatedNote = txtBox.Text.Trim();
-                                        if (string.IsNullOrWhiteSpace(updatedTitle))
-                                        {
-                                            updatedTitle = "Note";
-                                        }
+                                        if (string.IsNullOrWhiteSpace(updatedTitle)) updatedTitle = "Note";
+
                                         currentTitle = updatedTitle;
                                         currentNote = updatedNote;
                                         newBtn.Text = currentTitle;
-                                        // Update DB
-                                        int btnId = (int)newBtn.Tag;
+
                                         try
                                         {
                                             using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
                                             {
                                                 updateConn.Open();
-                                                string updateQuery = "UPDATE Notes SET Title = @Title, Note = @Note, Modified = GETDATE() WHERE NoteId = @Id";
+                                                string updateQuery = "UPDATE Notes SET Title=@Title, Note=@Note, Modified=GETDATE() WHERE NoteId=@Id";
                                                 using (SqlCommand updateCmd = new SqlCommand(updateQuery, updateConn))
                                                 {
                                                     updateCmd.Parameters.AddWithValue("@Title", currentTitle);
                                                     updateCmd.Parameters.AddWithValue("@Note", currentNote);
-                                                    updateCmd.Parameters.AddWithValue("@Id", btnId);
+                                                    updateCmd.Parameters.AddWithValue("@Id", id);
                                                     updateCmd.ExecuteNonQuery();
                                                 }
                                             }
-                                            // Log successful update
-                                            AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Updated note to title: {currentTitle}");
+                                            AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Updated note: {currentTitle}");
                                         }
                                         catch (Exception ex)
                                         {
                                             MessageBox.Show("Failed to update database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                         }
-                                        // Go back to main view
+
                                         contentPanel.Visible = false;
                                         flowLayoutPanel1.Visible = true;
                                         panel2.Visible = true;
                                     };
 
-
-
                                     // Add controls
                                     contentPanel.Controls.Add(backBtn);
+                                    contentPanel.Controls.Add(lblCount);
                                     contentPanel.Controls.Add(txtTitleBox);
                                     contentPanel.Controls.Add(txtBox);
+
+                                    // Position label after adding
+                                    lblCount.Location = new Point(contentPanel.Width - 140, 20);
                                 };
 
-                                // Right-click: edit Title and Note
+                                // RIGHT CLICK — delete note
                                 newBtn.MouseUp += (s, ev) =>
                                 {
                                     if (ev.Button == MouseButtons.Right)
                                     {
-                                        using (var editNoteForm = new NoteInputForm())
+                                        DialogResult confirm = MessageBox.Show(
+                                            "Are you sure you want to delete this note?",
+                                            "Delete Note",
+                                            MessageBoxButtons.YesNo,
+                                            MessageBoxIcon.Warning
+                                        );
+
+                                        if (confirm == DialogResult.Yes)
                                         {
-                                            editNoteForm.EnteredTitle = currentTitle;
-                                            editNoteForm.EnteredNote = currentNote;
-                                            if (editNoteForm.ShowDialog(this) == DialogResult.OK)
+                                            try
                                             {
-                                                string newTitle = editNoteForm.EnteredTitle;
-                                                string newNote = editNoteForm.EnteredNote;
-                                                if (!string.IsNullOrWhiteSpace(newNote))
+                                                using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
                                                 {
-                                                    if (string.IsNullOrWhiteSpace(newTitle))
+                                                    delConn.Open();
+                                                    string deleteQuery = "DELETE FROM Notes WHERE NoteId = @Id";
+                                                    using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
                                                     {
-                                                        newTitle = "Note";
-                                                    }
-                                                    currentTitle = newTitle;
-                                                    currentNote = newNote;
-                                                    newBtn.Text = currentTitle;
-                                                    // Update DB
-                                                    int btnId = (int)newBtn.Tag;
-                                                    try
-                                                    {
-                                                        using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
-                                                        {
-                                                            updateConn.Open();
-                                                            string updateQuery = "UPDATE Notes SET Title = @Title, Note = @Note, Modified = GETDATE() WHERE NoteId = @Id";
-                                                            using (SqlCommand updateCmd = new SqlCommand(updateQuery, updateConn))
-                                                            {
-                                                                updateCmd.Parameters.AddWithValue("@Title", currentTitle);
-                                                                updateCmd.Parameters.AddWithValue("@Note", currentNote);
-                                                                updateCmd.Parameters.AddWithValue("@Id", btnId);
-                                                                updateCmd.ExecuteNonQuery();
-                                                            }
-                                                        }
-                                                        // Log successful update
-                                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Updated note to title: {currentTitle}");
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        MessageBox.Show("Failed to update database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                                        delCmd.Parameters.AddWithValue("@Id", id);
+                                                        delCmd.ExecuteNonQuery();
                                                     }
                                                 }
+
+                                                AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Deleted note: {currentTitle}");
+                                                LoadNotes();
+                                                LoadWebNotes();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                MessageBox.Show("Failed to delete note:\n" + ex.Message,
+                                                    "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                             }
                                         }
                                     }
@@ -707,6 +576,7 @@ namespace TCRM_1
                 MessageBox.Show("Failed to load notes:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
 
 
         private void button1_Click(object sender, EventArgs e)
