@@ -12,6 +12,7 @@ namespace TCRM_1
 {
     public partial class Options : Form
     {
+
         private TCRMDash _dashboard;
         public Options(TCRMDash dashboard)
         {
@@ -85,5 +86,6 @@ namespace TCRM_1
         {
 
         }
+
     }
 }

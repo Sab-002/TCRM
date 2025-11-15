@@ -46,13 +46,24 @@ namespace TCRM_1
             Application.Exit(); // ensures everything ends
         }
 
-       
+
+
+        // Class-level reference
+        private Options optionsForm = null;
 
         private void button4_Click(object sender, EventArgs e)
         {
-            Options optionsForm = new Options(this); 
-            
-            // Position it near the button (like a context popup)
+            // Close the old instance if it exists
+            if (optionsForm != null && !optionsForm.IsDisposed)
+            {
+                optionsForm.Close();
+                optionsForm = null;
+            }
+
+            // Create a new instance
+            optionsForm = new Options(this);
+
+            // Position it near the button
             var button = (Button)sender;
             var buttonLocation = button.PointToScreen(System.Drawing.Point.Empty);
 
@@ -61,6 +72,7 @@ namespace TCRM_1
 
             optionsForm.Show();
         }
+
 
         private void panel2_Paint(object sender, PaintEventArgs e)
         {
