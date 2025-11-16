@@ -36,6 +36,9 @@
             button2 = new Button();
             button4 = new Button();
             panel2 = new Panel();
+            button6 = new Button();
+            button5 = new Button();
+            button1 = new Button();
             label1 = new Label();
             flowLayoutPanel1 = new FlowLayoutPanel();
             panel2.SuspendLayout();
@@ -83,6 +86,9 @@
             // 
             panel2.AutoSize = true;
             panel2.BackColor = Color.FromArgb(102, 102, 204);
+            panel2.Controls.Add(button6);
+            panel2.Controls.Add(button5);
+            panel2.Controls.Add(button1);
             panel2.Controls.Add(label1);
             panel2.Controls.Add(button4);
             panel2.Controls.Add(button3);
@@ -93,6 +99,45 @@
             panel2.Size = new Size(697, 61);
             panel2.TabIndex = 1;
             panel2.Paint += panel2_Paint;
+            // 
+            // button6
+            // 
+            button6.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button6.BackColor = Color.FromArgb(147, 147, 255);
+            button6.FlatStyle = FlatStyle.Flat;
+            button6.Location = new Point(357, 22);
+            button6.Name = "button6";
+            button6.Size = new Size(62, 29);
+            button6.TabIndex = 7;
+            button6.Text = "All";
+            button6.UseVisualStyleBackColor = false;
+            button6.Click += button6_Click;
+            // 
+            // button5
+            // 
+            button5.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button5.BackColor = Color.FromArgb(147, 147, 255);
+            button5.FlatStyle = FlatStyle.Flat;
+            button5.Location = new Point(493, 22);
+            button5.Name = "button5";
+            button5.Size = new Size(73, 29);
+            button5.TabIndex = 6;
+            button5.Text = "Webnotes";
+            button5.UseVisualStyleBackColor = false;
+            button5.Click += button5_Click;
+            // 
+            // button1
+            // 
+            button1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button1.BackColor = Color.FromArgb(147, 147, 255);
+            button1.FlatStyle = FlatStyle.Flat;
+            button1.Location = new Point(425, 22);
+            button1.Name = "button1";
+            button1.Size = new Size(62, 29);
+            button1.TabIndex = 5;
+            button1.Text = "Notes";
+            button1.UseVisualStyleBackColor = false;
+            button1.Click += button1_Click_1;
             // 
             // label1
             // 
@@ -145,5 +190,8 @@
         private Panel panel2;
         private FlowLayoutPanel flowLayoutPanel1;
         private Label label1;
+        private Button button5;
+        private Button button1;
+        private Button button6;
     }
 }
