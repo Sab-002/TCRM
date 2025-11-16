@@ -45,8 +45,6 @@ namespace TCRM_1
             Application.Exit(); // ensures everything ends
         }
 
-
-
         // Class-level reference
         private Options optionsForm = null;
 
@@ -119,6 +117,38 @@ namespace TCRM_1
             }
         }
 
+
+        private void button3_Click_1(object sender, EventArgs e)
+        {
+            string title = "Note";
+            string note = "";
+
+            int newId;
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
+                {
+                    conn.Open();
+                    string query = "INSERT INTO Notes (AccId, Title, Note, Created, Modified, IsPinned) VALUES (@AccId, @Title, @Note, GETDATE(), GETDATE(), 0); SELECT SCOPE_IDENTITY();";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
+                        cmd.Parameters.AddWithValue("@Title", title);
+                        cmd.Parameters.AddWithValue("@Note", note);
+                        newId = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
+                AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Added new note with title: {title}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to save to database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            flowLayoutPanel1.Controls.Clear();
+            LoadAllSorted();
+        }
+
         private void LoadWebNotes()
         {
             try
@@ -127,7 +157,7 @@ namespace TCRM_1
                 using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                 {
                     conn.Open();
-                    string query = "SELECT Id, Title, Link FROM webnote WHERE AccId = @AccId ORDER BY Id";
+                    string query = "SELECT Id, Title, Link FROM webnote WHERE AccId = @AccId AND IsArchived = 0 ORDER BY Id";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
@@ -313,43 +343,58 @@ namespace TCRM_1
                                     };
                                 };
 
-                                // RIGHT CLICK → delete
+                                // RIGHT CLICK → Delete + Archive
                                 newBtn.MouseUp += (s, ev) =>
                                 {
                                     if (ev.Button == MouseButtons.Right)
                                     {
-                                        DialogResult confirm = MessageBox.Show(
-                                            "Delete this web note?",
-                                            "Confirm Delete",
-                                            MessageBoxButtons.YesNo,
-                                            MessageBoxIcon.Warning
-                                        );
+                                        ContextMenuStrip cms = new ContextMenuStrip();
+                                        cms.Items.Add("Delete").Name = "Delete";
+                                        cms.Items.Add("Archive").Name = "Archive";
 
-                                        if (confirm == DialogResult.Yes)
+                                        cms.ItemClicked += (s2, ev2) =>
                                         {
-                                            try
+                                            if (ev2.ClickedItem.Name == "Delete")
                                             {
-                                                using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
+                                                DialogResult confirm = MessageBox.Show(
+                                                    "Delete this web note?",
+                                                    "Confirm Delete",
+                                                    MessageBoxButtons.YesNo,
+                                                    MessageBoxIcon.Warning
+                                                );
+
+                                                if (confirm == DialogResult.Yes)
                                                 {
-                                                    delConn.Open();
-                                                    string deleteQuery = "DELETE FROM webnote WHERE Id=@Id";
-                                                    using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
+                                                    try
                                                     {
-                                                        delCmd.Parameters.AddWithValue("@Id", noteId);
-                                                        delCmd.ExecuteNonQuery();
+                                                        using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
+                                                        {
+                                                            delConn.Open();
+                                                            string deleteQuery = "DELETE FROM webnote WHERE Id=@Id";
+                                                            using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
+                                                            {
+                                                                delCmd.Parameters.AddWithValue("@Id", noteId);
+                                                                delCmd.ExecuteNonQuery();
+                                                            }
+                                                        }
+
+                                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Deleted WebNote: {currentTitle}");
+                                                        LoadNotes();
+                                                        LoadWebNotes();
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        MessageBox.Show("Failed to delete web note:\n" + ex.Message);
                                                     }
                                                 }
-
-                                                AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Deleted WebNote: {currentTitle}");
-                                                flowLayoutPanel1.Controls.Clear(); // clear existing buttons before reloading
-                                                LoadNotes();
-                                                LoadWebNotes();
                                             }
-                                            catch (Exception ex)
+                                            else if (ev2.ClickedItem.Name == "Archive")
                                             {
-                                                MessageBox.Show("Failed to delete web note:\n" + ex.Message);
+                                                UpdateArchiveStatus(noteId, "WebNote", true);
                                             }
-                                        }
+                                        };
+
+                                        cms.Show(newBtn, ev.Location);
                                     }
                                 };
 
@@ -364,39 +409,6 @@ namespace TCRM_1
                 MessageBox.Show("Failed to load web notes:\n" + ex.Message);
             }
         }
-
-        private void button3_Click_1(object sender, EventArgs e)
-        {
-            string title = "Note";
-            string note = "";
-
-            int newId;
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
-                {
-                    conn.Open();
-                    string query = "INSERT INTO Notes (AccId, Title, Note, Created, Modified, IsPinned) VALUES (@AccId, @Title, @Note, GETDATE(), GETDATE(), 0); SELECT SCOPE_IDENTITY();";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
-                        cmd.Parameters.AddWithValue("@Title", title);
-                        cmd.Parameters.AddWithValue("@Note", note);
-                        newId = Convert.ToInt32(cmd.ExecuteScalar());
-                    }
-                }
-                AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Added new note with title: {title}");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Failed to save to database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            flowLayoutPanel1.Controls.Clear();
-            LoadAllSorted();
-        }
-
-
         private void LoadNotes()
         {
             try
@@ -404,7 +416,7 @@ namespace TCRM_1
                 using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                 {
                     conn.Open();
-                    string query = "SELECT NoteId, Title, Note FROM Notes WHERE AccId = @AccId ORDER BY NoteId";
+                    string query = "SELECT NoteId, Title, Note FROM Notes WHERE AccId = @AccId AND IsArchived = 0 ORDER BY NoteId";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
@@ -538,38 +550,54 @@ namespace TCRM_1
                                 {
                                     if (ev.Button == MouseButtons.Right)
                                     {
-                                        DialogResult confirm = MessageBox.Show(
-                                            "Are you sure you want to delete this note?",
-                                            "Delete Note",
-                                            MessageBoxButtons.YesNo,
-                                            MessageBoxIcon.Warning
-                                        );
+                                        ContextMenuStrip cms = new ContextMenuStrip();
+                                        cms.Items.Add("Delete").Name = "Delete";
+                                        cms.Items.Add("Archive").Name = "Archive";
 
-                                        if (confirm == DialogResult.Yes)
+                                        cms.ItemClicked += (s2, ev2) =>
                                         {
-                                            try
+                                            if (ev2.ClickedItem.Name == "Delete")
                                             {
-                                                using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
+                                                DialogResult confirm = MessageBox.Show(
+                                                    "Are you sure you want to delete this note?",
+                                                    "Delete Note",
+                                                    MessageBoxButtons.YesNo,
+                                                    MessageBoxIcon.Warning
+                                                );
+
+                                                if (confirm == DialogResult.Yes)
                                                 {
-                                                    delConn.Open();
-                                                    string deleteQuery = "DELETE FROM Notes WHERE NoteId = @Id";
-                                                    using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
+                                                    try
                                                     {
-                                                        delCmd.Parameters.AddWithValue("@Id", id);
-                                                        delCmd.ExecuteNonQuery();
+                                                        using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
+                                                        {
+                                                            delConn.Open();
+                                                            string deleteQuery = "DELETE FROM Notes WHERE NoteId = @Id";
+                                                            using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
+                                                            {
+                                                                delCmd.Parameters.AddWithValue("@Id", id);
+                                                                delCmd.ExecuteNonQuery();
+                                                            }
+                                                        }
+
+                                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Deleted note: {currentTitle}");
+                                                        flowLayoutPanel1.Controls.Clear();
+                                                        LoadNotes();
+                                                        LoadWebNotes();
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        MessageBox.Show("Failed to delete note:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                                     }
                                                 }
-
-                                                AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Deleted note: {currentTitle}");
-                                                flowLayoutPanel1.Controls.Clear();
-                                                LoadAllSorted();
                                             }
-                                            catch (Exception ex)
+                                            else if (ev2.ClickedItem.Name == "Archive")
                                             {
-                                                MessageBox.Show("Failed to delete note:\n" + ex.Message,
-                                                    "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                                UpdateArchiveStatus(id, "Note", true);
                                             }
-                                        }
+                                        };
+
+                                        cms.Show(newBtn, ev.Location);
                                     }
                                 };
 
@@ -585,8 +613,6 @@ namespace TCRM_1
             }
         }
 
-
-
         private void button1_Click(object sender, EventArgs e)
         {
 
@@ -599,17 +625,14 @@ namespace TCRM_1
         {
 
         }
-
         private void flowLayoutPanel1_Paint(object sender, PaintEventArgs e)
         {
 
         }
-
         private void panel3_Paint(object sender, PaintEventArgs e)
         {
 
         }
-
         private void flowLayoutPanel1_Paint_1(object sender, PaintEventArgs e)
         {
 
@@ -630,7 +653,8 @@ namespace TCRM_1
             flowLayoutPanel1.Controls.Clear(); // clear existing buttons before reloading
             LoadAllSorted();
         }
-        private void LoadAllSorted()
+
+        public void LoadAllSorted()
         {
             try
             {
@@ -639,14 +663,14 @@ namespace TCRM_1
                     conn.Open();
 
                     string query = @"
-                SELECT NoteId AS Id, Title, Note AS Content, Created, 'note' AS Type
-                FROM Notes
-                WHERE AccId = @AccId
-                UNION ALL
-                SELECT Id, Title, Link AS Content, Created, 'web' AS Type
-                FROM webnote
-                WHERE AccId = @AccId
-                ORDER BY Created DESC";
+                    SELECT NoteId AS Id, Title, Note AS Content, Created, 'note' AS Type
+                    FROM Notes
+                    WHERE AccId = @AccId AND IsArchived = 0
+                    UNION ALL
+                    SELECT Id, Title, Link AS Content, Created, 'web' AS Type
+                    FROM webnote
+                    WHERE AccId = @AccId AND IsArchived = 0
+                    ORDER BY Created DESC";
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
@@ -663,26 +687,51 @@ namespace TCRM_1
                                 string content = reader.IsDBNull(2) ? "" : reader.GetString(2);
                                 string type = reader.GetString(4);
 
-                                // --- Make a button exactly like your existing loaders ---
                                 Button newBtn = new Button
                                 {
                                     Text = title,
                                     Size = new Size(672, 59),
                                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                                    Tag = id,
+                                    Tag = new { Id = id, Type = type, Title = title, Content = content },
                                     BackColor = type == "note"
-                                        ? Color.FromArgb(255, 245, 204)   // note color
-                                        : Color.FromArgb(204, 229, 255)   // webnote color
+                                        ? Color.FromArgb(255, 245, 204)
+                                        : Color.FromArgb(204, 229, 255),
+                                    TextAlign = ContentAlignment.MiddleCenter
                                 };
 
+                                // LEFT CLICK → open editor
                                 if (type == "note")
-                                {
                                     AttachNoteHandlersClean(newBtn, id, title, content);
-                                }
                                 else
-                                {
                                     AttachWebNoteHandlersClean(newBtn, id, title, content);
-                                }
+
+                                // RIGHT CLICK → context menu (delete / archive)
+                                ContextMenuStrip cms = new ContextMenuStrip();
+                                cms.Items.Add("Delete").Name = "Delete";
+                                cms.Items.Add("Archive").Name = "Archive";
+
+                                cms.ItemClicked += (s2, ev2) =>
+                                {
+                                    if (ev2.ClickedItem.Name == "Delete")
+                                    {
+                                        if (type == "note")
+                                            DeleteNoteDialog(id, title);
+                                        else
+                                            DeleteWebNoteDialog(id, title);
+                                    }
+                                    else if (ev2.ClickedItem.Name == "Archive")
+                                    {
+                                        UpdateArchiveStatus(id, type, true);
+                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Archive", $"Archived {type}: {title}");
+                                        LoadAllSorted();
+                                    }
+                                };
+
+                                newBtn.MouseUp += (s, ev) =>
+                                {
+                                    if (ev.Button == MouseButtons.Right)
+                                        cms.Show(newBtn, ev.Location); 
+                                };
 
                                 flowLayoutPanel1.Controls.Add(newBtn);
                             }
@@ -695,21 +744,40 @@ namespace TCRM_1
                 MessageBox.Show("Failed to load sorted notes:\n" + ex.Message);
             }
         }
+        private void UpdateArchiveStatus(int id, string type, bool isArchived)
+        {
+            string query = type == "note" ? "UPDATE Notes SET IsArchived=@IsArchived WHERE NoteId=@Id" :
+                                             "UPDATE webnote SET IsArchived=@IsArchived WHERE Id=@Id";
 
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", id);
+                        cmd.Parameters.AddWithValue("@IsArchived", isArchived);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                AppConfig.LogEvent(AppConfig.CurrentAccId, "Archive", $"{(isArchived ? "Archived" : "Unarchived")} {type}: {id}");
+                flowLayoutPanel1.Controls.Clear(); // clear existing buttons before reloading
+                LoadAllSorted(); 
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to update archive status:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         private void AttachNoteHandlersClean(Button btn, int id, string title, string content)
         {
             btn.Click += (s, ev) =>
             {
                 OpenNoteEditor(id, btn, title, content);
             };
-
-            btn.MouseUp += (s, ev) =>
-            {
-                if (ev.Button == MouseButtons.Right)
-                    DeleteNoteDialog(id, title);
-            };
         }
-
         private void OpenNoteEditor(int id, Button btn, string title, string content)
         {
             flowLayoutPanel1.Visible = false;
@@ -812,22 +880,13 @@ namespace TCRM_1
             // Position count label after adding controls
             lblCount.Location = new Point(contentPanel.Width - 140, 20);
         }
-
-
         private void AttachWebNoteHandlersClean(Button btn, int id, string title, string url)
         {
             btn.Click += async (s, ev) =>
             {
                 await OpenWebNoteEditor(id, btn, title, url);
             };
-
-            btn.MouseUp += (s, ev) =>
-            {
-                if (ev.Button == MouseButtons.Right)
-                    DeleteWebNoteDialog(id, title);
-            };
         }
-
         private async Task OpenWebNoteEditor(int id, Button btn, string title, string url)
         {
             flowLayoutPanel1.Visible = false;
@@ -950,7 +1009,6 @@ namespace TCRM_1
             backBtn.Click += (s, ev) => saveAndReturn();
         }
 
-
         // Delete helpers
         private void DeleteNoteDialog(int id, string title)
         {
@@ -1011,7 +1069,6 @@ namespace TCRM_1
                 }
             }
         }
-
 
         private void optionButton1(object sender, EventArgs e)
         {

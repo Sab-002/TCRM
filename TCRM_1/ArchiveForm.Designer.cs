@@ -1,6 +1,6 @@
 ﻿namespace TCRM_1
 {
-    partial class LogsForm
+    partial class ArchiveForm
     {
         /// <summary>
         /// Required designer variable.
@@ -30,14 +30,14 @@
         {
             SuspendLayout();
             // 
-            // LogsForm
+            // ArchiveForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(351, 428);
-            Name = "LogsForm";
-            Text = "LogsForm";
-            Load += LogsForm_Load;
+            ClientSize = new Size(331, 454);
+            Name = "ArchiveForm";
+            Text = "ArchiveForm";
+            Load += ArchiveForm_Load;
             ResumeLayout(false);
         }
 

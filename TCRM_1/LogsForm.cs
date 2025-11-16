@@ -98,5 +98,10 @@ namespace TCRM_1
             base.OnDeactivate(e);
             this.Close(); // Closes when user clicks outside the form
         }
+
+        private void LogsForm_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }
