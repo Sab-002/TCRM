@@ -15,7 +15,7 @@ namespace TCRM_1
             _dashboard = dashboard;
             this.StartPosition = FormStartPosition.Manual;
             this.FormBorderStyle = FormBorderStyle.None;
-            this.Size = new Size(200, 200); // increased height for the new button
+            this.Size = new Size(200, 200); 
             this.Text = "Account Options";
             this.Deactivate += (s, e) =>
             {

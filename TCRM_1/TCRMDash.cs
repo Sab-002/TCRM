@@ -45,11 +45,9 @@ namespace TCRM_1
             Application.Exit(); // ensures everything ends
         }
 
-        // Class-level reference
-        private Options optionsForm = null;
-
         private void button4_Click(object sender, EventArgs e)
         {
+            Options optionsForm = null;
             // Close the old instance if it exists
             if (optionsForm != null && !optionsForm.IsDisposed)
             {
@@ -153,11 +151,11 @@ namespace TCRM_1
         {
             try
             {
-
+                //Is Pinned
                 using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                 {
                     conn.Open();
-                    string query = "SELECT Id, Title, Link FROM webnote WHERE AccId = @AccId AND IsArchived = 0 ORDER BY Id";
+                    string query = "SELECT Id, Title, Link FROM webnote WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 1 ORDER BY Id";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
@@ -174,11 +172,11 @@ namespace TCRM_1
                                     Text = currentTitle,
                                     Size = new Size(672, 59),
                                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                                    BackColor = Color.FromArgb(204, 229, 255),
+                                    BackColor = Color.FromArgb(142, 170, 252),
                                     Tag = noteId
                                 };
 
-                                // LEFT CLICK → open editable web note
+                                // LEFT CLICK 
                                 newBtn.Click += async (s, ev) =>
                                 {
                                     flowLayoutPanel1.Visible = false;
@@ -244,7 +242,7 @@ namespace TCRM_1
                                         MessageBox.Show("Failed to load URL:\n" + ex.Message);
                                     }
 
-                                    // ENTER KEY → save and reload (same as back)
+                                    // ENTER KEY (reload)
                                     txtUrl.KeyDown += (s2, ev2) =>
                                     {
                                         if (ev2.KeyCode == Keys.Enter)
@@ -351,6 +349,7 @@ namespace TCRM_1
                                         ContextMenuStrip cms = new ContextMenuStrip();
                                         cms.Items.Add("Delete").Name = "Delete";
                                         cms.Items.Add("Archive").Name = "Archive";
+                                        cms.Items.Add("Pinned").Name = "Pinned";
 
                                         cms.ItemClicked += (s2, ev2) =>
                                         {
@@ -392,6 +391,265 @@ namespace TCRM_1
                                             {
                                                 UpdateArchiveStatus(noteId, "WebNote", true);
                                             }
+                                            else if (ev2.ClickedItem.Name == "Pinned")
+                                            {
+                                                UpdatePinnedStatus(noteId, "WebNote", false);
+                                            }
+                                        };
+
+                                        cms.Show(newBtn, ev.Location);
+                                    }
+                                };
+
+                                flowLayoutPanel1.Controls.Add(newBtn);
+                            }
+                        }
+                    }
+                }
+                // Is not Pinned
+                    using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT Id, Title, Link FROM webnote WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 0 ORDER BY Id";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int noteId = reader.GetInt32(0);
+                                string currentTitle = reader.IsDBNull(1) ? "Web Note" : reader.GetString(1);
+                                string currentUrl = reader.IsDBNull(2) ? "" : reader.GetString(2);
+
+                                Button newBtn = new Button
+                                {
+                                    Text = currentTitle,
+                                    Size = new Size(672, 59),
+                                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                                    BackColor = Color.FromArgb(204, 229, 255),
+                                    Tag = noteId
+                                };
+
+                                // LEFT CLICK 
+                                newBtn.Click += async (s, ev) =>
+                                {
+                                    flowLayoutPanel1.Visible = false;
+                                    panel2.Visible = false;
+                                    contentPanel.Controls.Clear();
+                                    contentPanel.Visible = true;
+
+                                    // --- Header Panel ---
+                                    Panel topPanel = new Panel
+                                    {
+                                        Dock = DockStyle.Top,
+                                        Height = 70,
+                                        BackColor = Color.FromArgb(102, 102, 204)
+                                    };
+                                    contentPanel.Controls.Add(topPanel);
+
+                                    // Back Button
+                                    Button backBtn = new Button
+                                    {
+                                        Text = "← Back",
+                                        Size = new Size(80, 30),
+                                        Location = new Point(10, 20),
+                                        FlatStyle = FlatStyle.Flat
+                                    };
+                                    topPanel.Controls.Add(backBtn);
+
+                                    // Title TextBox
+                                    TextBox txtTitle = new TextBox
+                                    {
+                                        Text = currentTitle,
+                                        Font = new Font("Segoe UI", 10),
+                                        Width = 180,
+                                        Location = new Point(100, 22)
+                                    };
+                                    topPanel.Controls.Add(txtTitle);
+
+                                    // URL TextBox
+                                    TextBox txtUrl = new TextBox
+                                    {
+                                        Text = currentUrl,
+                                        Font = new Font("Segoe UI", 10),
+                                        Width = 300,
+                                        Location = new Point(290, 22)
+                                    };
+                                    topPanel.Controls.Add(txtUrl);
+
+                                    // --- WebView2 ---
+                                    var webView = new Microsoft.Web.WebView2.WinForms.WebView2
+                                    {
+                                        Dock = DockStyle.Fill
+                                    };
+                                    contentPanel.Controls.Add(webView);
+                                    webView.BringToFront();
+                                    topPanel.SendToBack();
+
+                                    try
+                                    {
+                                        await webView.EnsureCoreWebView2Async(null);
+                                        webView.CoreWebView2.Navigate(currentUrl);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        MessageBox.Show("Failed to load URL:\n" + ex.Message);
+                                    }
+
+                                    // ENTER KEY (reload)
+                                    txtUrl.KeyDown += (s2, ev2) =>
+                                    {
+                                        if (ev2.KeyCode == Keys.Enter)
+                                        {
+                                            ev2.SuppressKeyPress = true; // prevent the beep
+
+                                            string newTitle = txtTitle.Text.Trim();
+                                            string newUrl = txtUrl.Text.Trim();
+
+                                            if (string.IsNullOrWhiteSpace(newUrl))
+                                            {
+                                                MessageBox.Show("URL cannot be empty.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                MessageBox.Show("The URL has been updated successfully!", "Web Note", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                                return;
+                                            }
+                                            try
+                                            {
+                                                using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
+                                                {
+                                                    updateConn.Open();
+                                                    string updateQuery = "UPDATE webnote SET Title=@Title, Link=@Link WHERE Id=@Id";
+                                                    using (SqlCommand cmd = new SqlCommand(updateQuery, updateConn))
+                                                    {
+                                                        cmd.Parameters.AddWithValue("@Title", string.IsNullOrWhiteSpace(newTitle) ? "Web Note" : newTitle);
+                                                        cmd.Parameters.AddWithValue("@Link", newUrl);
+                                                        cmd.Parameters.AddWithValue("@Id", noteId);
+                                                        cmd.ExecuteNonQuery();
+                                                    }
+                                                }
+
+                                                AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Updated WebNote: {newTitle}");
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                MessageBox.Show("Failed to update database:\n" + ex.Message);
+                                            }
+
+                                            try { webView.Dispose(); } catch { }
+
+                                            contentPanel.Visible = false;
+                                            flowLayoutPanel1.Visible = true;
+                                            panel2.Visible = true;
+
+                                            flowLayoutPanel1.Controls.Clear();
+                                            LoadAllSorted();
+                                        }
+                                    };
+
+                                    // BACK BUTTON → auto save and reload
+                                    backBtn.Click += (s2, ev2) =>
+                                    {
+                                        string newTitle = txtTitle.Text.Trim();
+                                        string newUrl = txtUrl.Text.Trim();
+
+                                        if (string.IsNullOrWhiteSpace(newUrl))
+                                        {
+                                            MessageBox.Show("URL cannot be empty.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                            return;
+                                        }
+
+                                        try
+                                        {
+                                            using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
+                                            {
+                                                updateConn.Open();
+                                                string updateQuery = "UPDATE webnote SET Title=@Title, Link=@Link WHERE Id=@Id";
+                                                using (SqlCommand cmd = new SqlCommand(updateQuery, updateConn))
+                                                {
+                                                    cmd.Parameters.AddWithValue("@Title", string.IsNullOrWhiteSpace(newTitle) ? "Web Note" : newTitle);
+                                                    cmd.Parameters.AddWithValue("@Link", newUrl);
+                                                    cmd.Parameters.AddWithValue("@Id", noteId);
+                                                    cmd.ExecuteNonQuery();
+                                                }
+                                            }
+
+                                            AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Updated WebNote: {newTitle}");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            MessageBox.Show("Failed to update database:\n" + ex.Message);
+                                        }
+
+                                        try { webView.Dispose(); } catch { }
+
+                                        contentPanel.Visible = false;
+                                        flowLayoutPanel1.Visible = true;
+                                        panel2.Visible = true;
+
+                                        flowLayoutPanel1.Controls.Clear(); // clear existing buttons before reloading
+                                        LoadNotes();
+                                        LoadWebNotes();
+                                    };
+                                };
+
+                                // RIGHT CLICK → Delete + Archive
+                                newBtn.MouseUp += (s, ev) =>
+                                {
+                                    if (ev.Button == MouseButtons.Right)
+                                    {
+                                        ContextMenuStrip cms = new ContextMenuStrip();
+                                        cms.Items.Add("Delete").Name = "Delete";
+                                        cms.Items.Add("Archive").Name = "Archive";
+                                        cms.Items.Add("Pin").Name = "Pin";
+
+                                        cms.ItemClicked += (s2, ev2) =>
+                                        {
+                                            if (ev2.ClickedItem.Name == "Delete")
+                                            {
+                                                DialogResult confirm = MessageBox.Show(
+                                                    "Delete this web note?",
+                                                    "Confirm Delete",
+                                                    MessageBoxButtons.YesNo,
+                                                    MessageBoxIcon.Warning
+                                                );
+
+                                                if (confirm == DialogResult.Yes)
+                                                {
+                                                    try
+                                                    {
+                                                        using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
+                                                        {
+                                                            delConn.Open();
+                                                            string deleteQuery = "DELETE FROM webnote WHERE Id=@Id";
+                                                            using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
+                                                            {
+                                                                delCmd.Parameters.AddWithValue("@Id", noteId);
+                                                                delCmd.ExecuteNonQuery();
+                                                            }
+                                                        }
+
+                                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "WebNote", $"Deleted WebNote: {currentTitle}");
+                                                        LoadNotes();
+                                                        LoadWebNotes();
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        MessageBox.Show("Failed to delete web note:\n" + ex.Message);
+                                                    }
+                                                }
+                                            }
+                                            else if (ev2.ClickedItem.Name == "Archive")
+                                            {
+                                                UpdateArchiveStatus(noteId, "WebNote", true);
+                                            }
+                                            else if (ev2.ClickedItem.Name == "Pin")
+                                            {
+                                                UpdatePinnedStatus(noteId, "WebNote", true);
+                                            }
                                         };
 
                                         cms.Show(newBtn, ev.Location);
@@ -413,10 +671,11 @@ namespace TCRM_1
         {
             try
             {
+                //Is Pinned
                 using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                 {
                     conn.Open();
-                    string query = "SELECT NoteId, Title, Note FROM Notes WHERE AccId = @AccId AND IsArchived = 0 ORDER BY NoteId";
+                    string query = "SELECT NoteId, Title, Note FROM Notes WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 1 ORDER BY NoteId";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
@@ -436,7 +695,7 @@ namespace TCRM_1
                                     Text = currentTitle,
                                     Size = new Size(672, 59),
                                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                                    BackColor = Color.FromArgb(255, 245, 204),
+                                    BackColor = Color.FromArgb(137, 255, 89),
                                     Tag = id
                                 };
 
@@ -553,6 +812,7 @@ namespace TCRM_1
                                         ContextMenuStrip cms = new ContextMenuStrip();
                                         cms.Items.Add("Delete").Name = "Delete";
                                         cms.Items.Add("Archive").Name = "Archive";
+                                        cms.Items.Add("Pinned").Name = "Pinned";
 
                                         cms.ItemClicked += (s2, ev2) =>
                                         {
@@ -594,6 +854,209 @@ namespace TCRM_1
                                             else if (ev2.ClickedItem.Name == "Archive")
                                             {
                                                 UpdateArchiveStatus(id, "Note", true);
+                                            }
+                                            else if (ev2.ClickedItem.Name == "Pinned")
+                                            {
+                                                UpdatePinnedStatus(id, "Note", false);
+                                            }
+                                        };
+
+                                        cms.Show(newBtn, ev.Location);
+                                    }
+                                };
+
+                                flowLayoutPanel1.Controls.Add(newBtn);
+                            }
+                        }
+                    }
+                }
+                //Is not Pinned
+                using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT NoteId, Title, Note FROM Notes WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 0 ORDER BY NoteId";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int id = reader.GetInt32(0);
+                                string title = reader.IsDBNull(1) ? "Note" : reader.GetString(1);
+                                string note = reader.IsDBNull(2) ? "" : reader.GetString(2);
+
+                                string currentTitle = title;
+                                string currentNote = note;
+
+                                Button newBtn = new Button
+                                {
+                                    Text = currentTitle,
+                                    Size = new Size(672, 59),
+                                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                                    BackColor = Color.FromArgb(153, 255, 128),
+                                    Tag = id
+                                };
+
+                                // LEFT CLICK — open note editor
+                                newBtn.Click += (s, ev) =>
+                                {
+                                    flowLayoutPanel1.Visible = false;
+                                    panel2.Visible = false;
+                                    contentPanel.Visible = true;
+                                    contentPanel.Controls.Clear();
+
+                                    // Back button
+                                    Button backBtn = new Button
+                                    {
+                                        Text = "← Back",
+                                        Size = new Size(100, 40),
+                                        Location = new Point(10, 10)
+                                    };
+
+                                    // Live count label at top-right
+                                    Label lblCount = new Label
+                                    {
+                                        AutoSize = true,
+                                        Font = new Font("Segoe UI", 10, FontStyle.Italic),
+                                        ForeColor = Color.Gray,
+                                        TextAlign = ContentAlignment.MiddleRight,
+                                        Anchor = AnchorStyles.Top | AnchorStyles.Right
+                                    };
+
+                                    // Title box
+                                    TextBox txtTitleBox = new TextBox
+                                    {
+                                        Text = currentTitle,
+                                        Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                                        Location = new Point(10, 60),
+                                        Width = contentPanel.Width - 20,
+                                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                                    };
+
+                                    // Note box
+                                    TextBox txtBox = new TextBox
+                                    {
+                                        Text = currentNote,
+                                        Multiline = true,
+                                        ScrollBars = ScrollBars.Vertical,
+                                        Font = new Font("Segoe UI", 16),
+                                        Location = new Point(10, txtTitleBox.Bottom + 10),
+                                        Size = new Size(contentPanel.Width - 20, contentPanel.Height - txtTitleBox.Bottom - 20),
+                                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+                                    };
+
+                                    // Update count dynamically
+                                    txtBox.TextChanged += (s3, ev3) => { lblCount.Text = $"Letters: {txtBox.Text.Length}"; };
+                                    lblCount.Text = $"Letters: {txtBox.Text.Length}";
+
+                                    // Keep count label top-right on resize
+                                    contentPanel.Resize += (s2, ev2) =>
+                                    {
+                                        lblCount.Location = new Point(contentPanel.Width - 140, 20);
+                                    };
+
+                                    // Save & return to main view
+                                    backBtn.Click += (s2, ev2) =>
+                                    {
+                                        string updatedTitle = txtTitleBox.Text.Trim();
+                                        string updatedNote = txtBox.Text.Trim();
+                                        if (string.IsNullOrWhiteSpace(updatedTitle)) updatedTitle = "Note";
+
+                                        currentTitle = updatedTitle;
+                                        currentNote = updatedNote;
+                                        newBtn.Text = currentTitle;
+
+                                        try
+                                        {
+                                            using (SqlConnection updateConn = new SqlConnection(AppConfig.ConnectionString))
+                                            {
+                                                updateConn.Open();
+                                                string updateQuery = "UPDATE Notes SET Title=@Title, Note=@Note, Modified=GETDATE() WHERE NoteId=@Id";
+                                                using (SqlCommand updateCmd = new SqlCommand(updateQuery, updateConn))
+                                                {
+                                                    updateCmd.Parameters.AddWithValue("@Title", currentTitle);
+                                                    updateCmd.Parameters.AddWithValue("@Note", currentNote);
+                                                    updateCmd.Parameters.AddWithValue("@Id", id);
+                                                    updateCmd.ExecuteNonQuery();
+                                                }
+                                            }
+                                            AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Updated note: {currentTitle}");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            MessageBox.Show("Failed to update database:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        }
+
+                                        contentPanel.Visible = false;
+                                        flowLayoutPanel1.Visible = true;
+                                        panel2.Visible = true;
+                                    };
+
+                                    // Add controls
+                                    contentPanel.Controls.Add(backBtn);
+                                    contentPanel.Controls.Add(lblCount);
+                                    contentPanel.Controls.Add(txtTitleBox);
+                                    contentPanel.Controls.Add(txtBox);
+
+                                    // Position label after adding
+                                    lblCount.Location = new Point(contentPanel.Width - 140, 20);
+                                };
+
+                                // RIGHT CLICK — delete note
+                                newBtn.MouseUp += (s, ev) =>
+                                {
+                                    if (ev.Button == MouseButtons.Right)
+                                    {
+                                        ContextMenuStrip cms = new ContextMenuStrip();
+                                        cms.Items.Add("Delete").Name = "Delete";
+                                        cms.Items.Add("Archive").Name = "Archive";
+                                        cms.Items.Add("Pin").Name = "Pin";
+
+                                        cms.ItemClicked += (s2, ev2) =>
+                                        {
+                                            if (ev2.ClickedItem.Name == "Delete")
+                                            {
+                                                DialogResult confirm = MessageBox.Show(
+                                                    "Are you sure you want to delete this note?",
+                                                    "Delete Note",
+                                                    MessageBoxButtons.YesNo,
+                                                    MessageBoxIcon.Warning
+                                                );
+
+                                                if (confirm == DialogResult.Yes)
+                                                {
+                                                    try
+                                                    {
+                                                        using (SqlConnection delConn = new SqlConnection(AppConfig.ConnectionString))
+                                                        {
+                                                            delConn.Open();
+                                                            string deleteQuery = "DELETE FROM Notes WHERE NoteId = @Id";
+                                                            using (SqlCommand delCmd = new SqlCommand(deleteQuery, delConn))
+                                                            {
+                                                                delCmd.Parameters.AddWithValue("@Id", id);
+                                                                delCmd.ExecuteNonQuery();
+                                                            }
+                                                        }
+
+                                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Note", $"Deleted note: {currentTitle}");
+                                                        flowLayoutPanel1.Controls.Clear();
+                                                        LoadNotes();
+                                                        LoadWebNotes();
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        MessageBox.Show("Failed to delete note:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                                    }
+                                                }
+                                            }
+                                            else if (ev2.ClickedItem.Name == "Archive")
+                                            {
+                                                UpdateArchiveStatus(id, "Note", true);
+                                            }
+                                            else if (ev2.ClickedItem.Name == "Pin")
+                                            {
+                                                UpdatePinnedStatus(id, "Note", true);
                                             }
                                         };
 
@@ -658,6 +1121,7 @@ namespace TCRM_1
         {
             try
             {
+                //Pinned
                 using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
                 {
                     conn.Open();
@@ -665,11 +1129,11 @@ namespace TCRM_1
                     string query = @"
                     SELECT NoteId AS Id, Title, Note AS Content, Created, 'note' AS Type
                     FROM Notes
-                    WHERE AccId = @AccId AND IsArchived = 0
+                    WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 1
                     UNION ALL
                     SELECT Id, Title, Link AS Content, Created, 'web' AS Type
                     FROM webnote
-                    WHERE AccId = @AccId AND IsArchived = 0
+                    WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 1
                     ORDER BY Created DESC";
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -694,8 +1158,8 @@ namespace TCRM_1
                                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                                     Tag = new { Id = id, Type = type, Title = title, Content = content },
                                     BackColor = type == "note"
-                                        ? Color.FromArgb(255, 245, 204)
-                                        : Color.FromArgb(204, 229, 255),
+                                        ? Color.FromArgb(137, 255, 89)
+                                        : Color.FromArgb(142, 170, 252),
                                     TextAlign = ContentAlignment.MiddleCenter
                                 };
 
@@ -709,6 +1173,7 @@ namespace TCRM_1
                                 ContextMenuStrip cms = new ContextMenuStrip();
                                 cms.Items.Add("Delete").Name = "Delete";
                                 cms.Items.Add("Archive").Name = "Archive";
+                                cms.Items.Add("Pinned").Name = "Pinned";
 
                                 cms.ItemClicked += (s2, ev2) =>
                                 {
@@ -723,6 +1188,98 @@ namespace TCRM_1
                                     {
                                         UpdateArchiveStatus(id, type, true);
                                         AppConfig.LogEvent(AppConfig.CurrentAccId, "Archive", $"Archived {type}: {title}");
+                                        LoadAllSorted();
+                                    }
+                                    else if (ev2.ClickedItem.Name == "Pinned")
+                                    {
+                                        UpdatePinnedStatus(id, type, false);
+                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Pinned", $"Pinned {type}: {title}");
+                                        LoadAllSorted();
+                                    }
+                                };
+
+                                newBtn.MouseUp += (s, ev) =>
+                                {
+                                    if (ev.Button == MouseButtons.Right)
+                                        cms.Show(newBtn, ev.Location);
+                                };
+
+                                flowLayoutPanel1.Controls.Add(newBtn);
+                            }
+                        }
+                    }
+                }
+                // Not Pinned
+                using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
+                {
+                    conn.Open();
+
+                    string query = @"
+                    SELECT NoteId AS Id, Title, Note AS Content, Created, 'note' AS Type
+                    FROM Notes
+                    WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 0
+                    UNION ALL
+                    SELECT Id, Title, Link AS Content, Created, 'web' AS Type
+                    FROM webnote
+                    WHERE AccId = @AccId AND IsArchived = 0 AND IsPinned = 0
+                    ORDER BY Created DESC";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@AccId", AppConfig.CurrentAccId);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int id = reader.GetInt32(0);
+                                string title = reader.IsDBNull(1) ? "Untitled" : reader.GetString(1);
+                                string content = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                                string type = reader.GetString(4);
+
+                                Button newBtn = new Button
+                                {
+                                    Text = title,
+                                    Size = new Size(672, 59),
+                                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                                    Tag = new { Id = id, Type = type, Title = title, Content = content },
+                                    BackColor = type == "note"
+                                        ? Color.FromArgb(153, 245, 128)
+                                        : Color.FromArgb(204, 229, 255),
+                                    TextAlign = ContentAlignment.MiddleCenter
+                                };
+
+                                // LEFT CLICK → open editor
+                                if (type == "note")
+                                    AttachNoteHandlersClean(newBtn, id, title, content);
+                                else
+                                    AttachWebNoteHandlersClean(newBtn, id, title, content);
+
+                                // RIGHT CLICK → context menu (delete / archive)
+                                ContextMenuStrip cms = new ContextMenuStrip();
+                                cms.Items.Add("Delete").Name = "Delete";
+                                cms.Items.Add("Archive").Name = "Archive";
+                                cms.Items.Add("Pin").Name = "Pin";
+
+                                cms.ItemClicked += (s2, ev2) =>
+                                {
+                                    if (ev2.ClickedItem.Name == "Delete")
+                                    {
+                                        if (type == "note")
+                                            DeleteNoteDialog(id, title);
+                                        else
+                                            DeleteWebNoteDialog(id, title);
+                                    }
+                                    else if (ev2.ClickedItem.Name == "Archive")
+                                    {
+                                        UpdateArchiveStatus(id, type, true);
+                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Archive", $"Archived {type}: {title}");
+                                        LoadAllSorted();
+                                    }
+                                    else if (ev2.ClickedItem.Name == "Pin")
+                                    {
+                                        UpdatePinnedStatus(id, type, true);
+                                        AppConfig.LogEvent(AppConfig.CurrentAccId, "Pin", $"Pinned {type}: {title}");
                                         LoadAllSorted();
                                     }
                                 };
@@ -744,10 +1301,37 @@ namespace TCRM_1
                 MessageBox.Show("Failed to load sorted notes:\n" + ex.Message);
             }
         }
+        private void UpdatePinnedStatus(int id, string type, bool IsPinned)
+        {
+            string query = type == "note" ? "UPDATE Notes SET IsPinned=@IsPinned WHERE NoteId=@Id" :
+                                             "UPDATE webnote SET IsPinned=@IsPinned WHERE Id=@Id";
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(AppConfig.ConnectionString))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", id);
+                        cmd.Parameters.AddWithValue("@IsPinned", IsPinned);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                AppConfig.LogEvent(AppConfig.CurrentAccId, "Archive", $"{(IsPinned ? "Archived" : "Unarchived")} {type}: {id}");
+                flowLayoutPanel1.Controls.Clear(); // clear existing buttons before reloading
+                LoadAllSorted();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to update pin status:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         private void UpdateArchiveStatus(int id, string type, bool isArchived)
         {
-            string query = type == "note" ? "UPDATE Notes SET IsArchived=@IsArchived WHERE NoteId=@Id" :
-                                             "UPDATE webnote SET IsArchived=@IsArchived WHERE Id=@Id";
+            string query = type == "note" ? "UPDATE Notes SET IsPinned=@IsPinned WHERE NoteId=@Id" :
+                                             "UPDATE webnote SET IsPinned=@IsPinned WHERE Id=@Id";
 
             try
             {
