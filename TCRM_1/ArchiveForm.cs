@@ -17,57 +17,9 @@ namespace TCRM_1
         public ArchiveForm(TCRMDash dashboard)
         {
             InitializeComponent();
-            SetupForm();
             LoadArchivedItems();
             _dashboard = dashboard;
-
         }
-
-        private void SetupForm()
-        {
-            this.Text = "Archived Notes & WebNotes";
-            this.Size = new Size(720, 500);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-
-            // Optional top panel (panel2)
-            panel2 = new Panel
-            {
-                Size = new Size(700, 40),
-                Location = new Point(10, 10)
-            };
-            this.Controls.Add(panel2);
-
-            Button btnBack = new Button
-            {
-                Text = "Back",
-                Size = new Size(80, 30),
-                Location = new Point(20, 5)
-            };
-            btnBack.Click += BtnBack_Click;
-            panel2.Controls.Add(btnBack);
-
-            flowLayoutPanel1 = new FlowLayoutPanel
-            {
-                Location = new Point(20, 60),
-                Size = new Size(660, 380),
-                AutoScroll = true,
-                WrapContents = true,
-                FlowDirection = FlowDirection.TopDown
-            };
-            this.Controls.Add(flowLayoutPanel1);
-
-            contentPanel = new Panel
-            {
-                Location = new Point(20, 60),
-                Size = new Size(660, 380),
-                Visible = false
-            };
-            this.Controls.Add(contentPanel);
-        }
-
         private void LoadArchivedItems()
         {
             flowLayoutPanel1.Controls.Clear();
@@ -135,7 +87,7 @@ namespace TCRM_1
                             Text = title,
                             Size = new Size(640, 60),
                             Tag = new { Id = id, Type = type, Title = title, Content = content },
-                            BackColor = type == "Note" ? Color.FromArgb(255, 245, 204) : Color.FromArgb(204, 229, 255),
+                            BackColor = type == "Note" ? Color.FromArgb(153, 245, 128) : Color.FromArgb(204, 229, 255),
                             TextAlign = ContentAlignment.MiddleLeft
                         };
 
@@ -170,7 +122,6 @@ namespace TCRM_1
                 MessageBox.Show("Failed to load archived items:\n" + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
 
         private async Task ShowItemDetail(int id, string type, string title, string content)
         {

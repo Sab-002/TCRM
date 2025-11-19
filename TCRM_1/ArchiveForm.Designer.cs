@@ -28,17 +28,47 @@
         /// </summary>
         private void InitializeComponent()
         {
-            SuspendLayout();
-            // 
-            // ArchiveForm
-            // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(331, 454);
-            Name = "ArchiveForm";
-            Text = "ArchiveForm";
-            Load += ArchiveForm_Load;
-            ResumeLayout(false);
+            this.Text = "Archived Notes & WebNotes";
+            this.Size = new Size(720, 500);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+
+            // Optional top panel (panel2)
+            panel2 = new Panel
+            {
+                Size = new Size(700, 40),
+                Location = new Point(10, 10)
+            };
+            this.Controls.Add(panel2);
+
+            Button btnBack = new Button
+            {
+                Text = "Back",
+                Size = new Size(80, 30),
+                Location = new Point(20, 5)
+            };
+            btnBack.Click += BtnBack_Click;
+            panel2.Controls.Add(btnBack);
+
+            flowLayoutPanel1 = new FlowLayoutPanel
+            {
+                Location = new Point(20, 60),
+                Size = new Size(660, 380),
+                AutoScroll = true,
+                WrapContents = true,
+                FlowDirection = FlowDirection.TopDown
+            };
+            this.Controls.Add(flowLayoutPanel1);
+
+            contentPanel = new Panel
+            {
+                Location = new Point(20, 60),
+                Size = new Size(660, 380),
+                Visible = false
+            };
+            this.Controls.Add(contentPanel);
         }
 
         #endregion
